@@ -1,0 +1,102 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      WINDOWS_SIGNING_PFX_BASE64: ${{ secrets.WINDOWS_SIGNING_PFX_BASE64 }}
+      WINDOWS_SIGNING_PFX_PASSWORD: ${{ secrets.WINDOWS_SIGNING_PFX_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+          cache: true
+          cache-dependency-path: '**/*.csproj'
+      - name: Resolve version
+        id: version
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}" -replace '^v', ''
+          if ($version -notmatch '^\d+\.\d+\.\d+([.-][0-9A-Za-z.-]+)?$') { throw "Invalid version tag" }
+          "version=$version" >> $env:GITHUB_OUTPUT
+      - run: dotnet restore Streamboard.Companion.sln
+      - run: dotnet build Streamboard.Companion.sln --configuration Release --no-restore -p:Version=${{ steps.version.outputs.version }}
+      - run: dotnet test Streamboard.Companion.sln --configuration Release --no-build
+      - name: Publish portable application
+        run: >-
+          dotnet publish src/Streamboard.Companion.Windows/Streamboard.Companion.Windows.csproj
+          --configuration Release --runtime win-x64 --self-contained true
+          -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:DebugType=None -p:Version=${{ steps.version.outputs.version }}
+          --output artifacts/publish
+      - name: Sign application when configured
+        if: ${{ env.WINDOWS_SIGNING_PFX_BASE64 != '' }}
+        shell: pwsh
+        env:
+          SIGNING_PFX: ${{ env.WINDOWS_SIGNING_PFX_BASE64 }}
+          SIGNING_PASSWORD: ${{ env.WINDOWS_SIGNING_PFX_PASSWORD }}
+        run: |
+          $pfx = Join-Path $env:RUNNER_TEMP signing.pfx
+          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:SIGNING_PFX))
+          & signtool sign /fd SHA256 /f $pfx /p $env:SIGNING_PASSWORD /tr http://timestamp.digicert.com /td SHA256 artifacts/publish/Streamboard.Companion.exe
+          Remove-Item -LiteralPath $pfx -Force
+      - name: Package portable ZIP
+        shell: pwsh
+        run: |
+          $asset = "artifacts/Streamboard.Companion-${{ steps.version.outputs.version }}-win-x64-portable.zip"
+          Compress-Archive -Path artifacts/publish/* -DestinationPath $asset -CompressionLevel Optimal
+      - name: Build installer
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path -LiteralPath $iscc)) { throw "Inno Setup 6 is unavailable" }
+          & $iscc "/DAppVersion=${{ steps.version.outputs.version }}" installer/Streamboard.Companion.iss
+      - name: Sign installer when configured
+        if: ${{ env.WINDOWS_SIGNING_PFX_BASE64 != '' }}
+        shell: pwsh
+        env:
+          SIGNING_PFX: ${{ env.WINDOWS_SIGNING_PFX_BASE64 }}
+          SIGNING_PASSWORD: ${{ env.WINDOWS_SIGNING_PFX_PASSWORD }}
+        run: |
+          $pfx = Join-Path $env:RUNNER_TEMP signing.pfx
+          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:SIGNING_PFX))
+          & signtool sign /fd SHA256 /f $pfx /p $env:SIGNING_PASSWORD /tr http://timestamp.digicert.com /td SHA256 "artifacts/Streamboard.Companion-Setup-${{ steps.version.outputs.version }}.exe"
+          Remove-Item -LiteralPath $pfx -Force
+      - name: Generate SPDX SBOM
+        shell: pwsh
+        run: |
+          dotnet tool install --global Microsoft.Sbom.DotNetTool
+          sbom-tool generate -b artifacts/publish -bc . -pn Streamboard.Companion -pv "${{ steps.version.outputs.version }}" -ps Webvibecoding -nsb https://github.com/webvibecoding/streamboard-companion
+          Copy-Item artifacts/publish/_manifest/spdx_2.2/manifest.spdx.json "artifacts/Streamboard.Companion-${{ steps.version.outputs.version }}-sbom.spdx.json"
+          Remove-Item -LiteralPath artifacts/publish/_manifest -Recurse -Force
+      - name: Generate checksums
+        shell: pwsh
+        run: |
+          $files = Get-ChildItem artifacts -File | Where-Object { $_.Name -ne 'SHA256SUMS.txt' } | Sort-Object Name
+          $lines = foreach ($file in $files) {
+            $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $file.FullName).Hash.ToLowerInvariant()
+            "$hash  $($file.Name)"
+          }
+          Set-Content -LiteralPath artifacts/SHA256SUMS.txt -Value $lines -Encoding utf8NoBOM
+      - uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          name: Streamboard Companion ${{ steps.version.outputs.version }}
+          body_path: RELEASE_NOTES.md
+          files: |
+            artifacts/Streamboard.Companion-${{ steps.version.outputs.version }}-win-x64-portable.zip
+            artifacts/Streamboard.Companion-Setup-${{ steps.version.outputs.version }}.exe
+            artifacts/Streamboard.Companion-${{ steps.version.outputs.version }}-sbom.spdx.json
+            artifacts/SHA256SUMS.txt
+          fail_on_unmatched_files: true

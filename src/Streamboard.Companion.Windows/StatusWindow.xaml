@@ -1,0 +1,53 @@
+<Window x:Class="Streamboard.Companion.Windows.StatusWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Streamboard Companion" Height="430" Width="620"
+        MinHeight="390" MinWidth="540" WindowStartupLocation="CenterScreen"
+        ShowInTaskbar="False">
+  <Grid Margin="24">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <StackPanel>
+      <TextBlock Text="Streamboard Companion" FontSize="24" FontWeight="Bold" />
+      <TextBlock x:Name="StateText" Margin="0,6,0,0" Foreground="#666" Text="Запуск…" />
+    </StackPanel>
+
+    <Border Grid.Row="1" Margin="0,20,0,16" Padding="16" CornerRadius="8" Background="#F3F5F7">
+      <StackPanel>
+        <TextBlock Text="Текущая игра" FontSize="12" Foreground="#666" />
+        <TextBlock x:Name="GameText" Margin="0,4,0,0" FontSize="18" FontWeight="SemiBold" Text="Не обнаружена" />
+      </StackPanel>
+    </Border>
+
+    <Grid Grid.Row="2">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="16" />
+        <ColumnDefinition Width="*" />
+      </Grid.ColumnDefinitions>
+      <Border Padding="16" BorderBrush="#DDD" BorderThickness="1" CornerRadius="8">
+        <StackPanel>
+          <TextBlock Text="Twitch" FontSize="17" FontWeight="SemiBold" />
+          <TextBlock x:Name="TwitchStatusText" Margin="0,8,0,0" TextWrapping="Wrap" Text="Ожидание проверки" />
+        </StackPanel>
+      </Border>
+      <Border Grid.Column="2" Padding="16" BorderBrush="#DDD" BorderThickness="1" CornerRadius="8">
+        <StackPanel>
+          <TextBlock Text="VK Play Live" FontSize="17" FontWeight="SemiBold" />
+          <TextBlock x:Name="VkStatusText" Margin="0,8,0,0" TextWrapping="Wrap" Text="Ожидание проверки" />
+        </StackPanel>
+      </Border>
+    </Grid>
+
+    <StackPanel Grid.Row="3" Margin="0,20,0,0" Orientation="Horizontal" HorizontalAlignment="Right">
+      <Button x:Name="MappingButton" Padding="14,8" Margin="0,0,8,0" Content="Выбрать категорию…" IsEnabled="False" Click="MappingButton_Click" />
+      <Button x:Name="PauseButton" Padding="14,8" Margin="0,0,8,0" Content="Приостановить" Click="PauseButton_Click" />
+      <Button Padding="14,8" Content="Скрыть" Click="HideButton_Click" />
+    </StackPanel>
+  </Grid>
+</Window>

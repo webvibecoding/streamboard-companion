@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>Streamboard.Companion.Core</AssemblyName>
+    <RootNamespace>Streamboard.Companion.Core</RootNamespace>
+  </PropertyGroup>
+</Project>
+

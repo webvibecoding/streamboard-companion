@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+          cache: true
+          cache-dependency-path: '**/*.csproj'
+      - run: dotnet restore Streamboard.Companion.sln
+      - run: dotnet build Streamboard.Companion.sln --configuration Release --no-restore
+      - run: dotnet test Streamboard.Companion.sln --configuration Release --no-build --logger "trx;LogFileName=tests.trx"
+      - name: Publish smoke artifact
+        run: >-
+          dotnet publish src/Streamboard.Companion.Windows/Streamboard.Companion.Windows.csproj
+          --configuration Release --runtime win-x64 --self-contained true
+          -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+          --output artifacts/publish
+      - uses: actions/upload-artifact@v4
+        with:
+          name: streamboard-companion-ci-win-x64
+          path: artifacts/publish
+          if-no-files-found: error
