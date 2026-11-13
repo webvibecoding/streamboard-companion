@@ -44,6 +44,27 @@ public sealed class ApiClientTests
     }
 
     [Fact]
+    public async Task ManualMappingSendsOnlyWritableFields()
+    {
+        var handler = new RecordingHandler();
+        using var http = new HttpClient(handler) { BaseAddress = new Uri("https://streamboard.sip1ay.ru/") };
+        var client = new StreamboardApiClient(http);
+        var mapping = new DesktopMapping(
+            new SyncGame("steam:730", "steam", "Counter-Strike 2", "cs2.exe"),
+            "twitch",
+            new CategorySearchItem("32399", "Counter-Strike 2", null),
+            "manual");
+
+        await client.PutMappingAsync("access-token", mapping);
+
+        using var json = JsonDocument.Parse(Assert.Single(handler.Requests).Body);
+        var body = json.RootElement;
+        Assert.Equal("twitch", body.GetProperty("platform_id").GetString());
+        Assert.False(body.TryGetProperty("resolution_source", out _));
+        Assert.False(body.GetProperty("category").TryGetProperty("type", out _));
+    }
+
+    [Fact]
     public async Task ApiErrorsDoNotReflectTokensFromUntrustedResponseBodies()
     {
         using var http = new HttpClient(new SecretErrorHandler())

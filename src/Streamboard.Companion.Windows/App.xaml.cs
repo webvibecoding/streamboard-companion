@@ -60,7 +60,7 @@ public partial class App : System.Windows.Application
             Path.Combine(dataDirectory, "executable-mappings.json"));
         _statusWindow = new StatusWindow(_trackingControl, OpenMappingWindow);
 
-        _apiHttpClient = new HttpClient
+        _apiHttpClient = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false })
         {
             BaseAddress = ProductionBaseUri,
             Timeout = TimeSpan.FromSeconds(20),
@@ -153,7 +153,7 @@ public partial class App : System.Windows.Application
     {
         if (_tokens is not null)
         {
-            await _tokens.GetAccessTokenAsync(_shutdown.Token).ConfigureAwait(true);
+            await _tokens.GetAccessTokenAsync(_shutdown.Token, allowPairing: true).ConfigureAwait(true);
         }
     }
 
@@ -204,7 +204,8 @@ public partial class App : System.Windows.Application
             return;
         }
 
-        var window = new CategoryMappingWindow(game, _api, _tokens, _executableMappings)
+        var window = new CategoryMappingWindow(
+            game, _api, _tokens, _executableMappings, _statusWindow.GetResultsFor(game.Key))
         {
             Owner = _statusWindow.IsVisible ? _statusWindow : null,
         };

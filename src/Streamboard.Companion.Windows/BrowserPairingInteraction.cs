@@ -27,7 +27,10 @@ internal sealed class BrowserPairingInteraction : IPairingInteraction
 
         var target = pairing.VerificationUriComplete ?? pairing.VerificationUri;
         if (!Uri.TryCreate(target, UriKind.Absolute, out var uri)
-            || uri.Scheme != Uri.UriSchemeHttps)
+            || uri.Scheme != Uri.UriSchemeHttps
+            || !uri.IsDefaultPort
+            || uri.IdnHost != "streamboard.sip1ay.ru"
+            || uri.UserInfo.Length != 0)
         {
             throw new InvalidOperationException("pairing_verification_uri_invalid");
         }

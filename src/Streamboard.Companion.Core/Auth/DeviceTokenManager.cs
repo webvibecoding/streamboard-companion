@@ -72,7 +72,9 @@ public sealed class DeviceTokenManager
         _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
-    public async Task<string> GetAccessTokenAsync(CancellationToken cancellationToken = default)
+    public async Task<string> GetAccessTokenAsync(
+        CancellationToken cancellationToken = default,
+        bool allowPairing = false)
     {
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
@@ -90,6 +92,11 @@ public sealed class DeviceTokenManager
                 {
                     return refreshed.AccessToken;
                 }
+            }
+
+            if (!allowPairing)
+            {
+                throw new CompanionApiException(HttpStatusCode.Unauthorized, "desktop_pairing_required");
             }
 
             var paired = await PairAsync(cancellationToken).ConfigureAwait(false);

@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Streamboard.Companion.Core.Api;
 
@@ -9,7 +10,10 @@ public sealed class StreamboardApiClient : IStreamboardApiClient
 {
     public const string ApiPrefix = "api/desktop/v1/";
 
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+    };
     private readonly HttpClient _httpClient;
 
     public StreamboardApiClient(HttpClient httpClient)
@@ -101,7 +105,7 @@ public sealed class StreamboardApiClient : IStreamboardApiClient
         SendJsonAsync<DesktopMapping>(
             HttpMethod.Put,
             "mappings",
-            mapping,
+            new { mapping.Game, platform_id = mapping.PlatformId, mapping.Category },
             accessToken,
             cancellationToken);
 

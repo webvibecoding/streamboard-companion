@@ -12,21 +12,34 @@ public partial class CategoryMappingWindow : Window
     private readonly IStreamboardApiClient _api;
     private readonly DeviceTokenManager _tokens;
     private readonly IExecutableMappingStore _executableMappings;
+    private readonly IReadOnlyList<PlatformSyncResult> _results;
+    private bool _busy;
 
     public CategoryMappingWindow(
         ResolvedGame game,
         IStreamboardApiClient api,
         DeviceTokenManager tokens,
-        IExecutableMappingStore executableMappings)
+        IExecutableMappingStore executableMappings,
+        IReadOnlyList<PlatformSyncResult> results)
     {
         InitializeComponent();
         _game = game;
         _api = api;
         _tokens = tokens;
         _executableMappings = executableMappings;
+        _results = results;
         GameNameBox.Text = game.DisplayName;
         QueryBox.Text = game.DisplayName;
-        ResultsList.SelectionChanged += (_, _) => SaveButton.IsEnabled = ResultsList.SelectedItem is not null;
+        if (results.Any(result => result.PlatformId == "vkplaylive" && result.Status == "needs_mapping")
+            && !results.Any(result => result.PlatformId == "twitch" && result.Status == "needs_mapping"))
+        {
+            PlatformBox.SelectedIndex = 1;
+        }
+
+        ResultsList.SelectionChanged += (_, _) =>
+            SaveButton.IsEnabled = !_busy && ResultsList.SelectedItem is not null;
+        PlatformBox.SelectionChanged += (_, _) => ShowCandidates();
+        ShowCandidates();
     }
 
     private async void SearchButton_Click(object sender, RoutedEventArgs e)
@@ -77,26 +90,23 @@ public partial class CategoryMappingWindow : Window
         SetBusy(true, "Сохраняем…");
         try
         {
-            if (_game.Source == "exe")
-            {
-                await _executableMappings.SetAsync(new ExecutableGameMapping(
-                    _game.Key,
-                    displayName));
-            }
-
             var token = await _tokens.GetAccessTokenAsync();
             await _api.PutMappingAsync(
                 token,
                 new DesktopMapping(
                     new SyncGame(
                         _game.Key,
-                        _game.Source == "exe" ? "exe" : _game.Source,
+                        _game.Source,
                         displayName,
                         Path.GetFileName(_game.ExecutableName)),
                     SelectedPlatform(),
-                    category));
+                    category with { Type = category.Type ?? "game" }));
+            if (_game.Source == "exe")
+            {
+                await _executableMappings.SetAsync(new ExecutableGameMapping(_game.Key, displayName));
+            }
+
             DialogResult = true;
-            Close();
         }
         catch (Exception exception)
         {
@@ -110,8 +120,19 @@ public partial class CategoryMappingWindow : Window
     private string SelectedPlatform() =>
         (PlatformBox.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "twitch";
 
+    private void ShowCandidates()
+    {
+        ResultsList.SelectedItem = null;
+        ResultsList.ItemsSource = _results.FirstOrDefault(result => result.PlatformId == SelectedPlatform())
+            ?.Candidates ?? [];
+        FeedbackText.Text = "";
+    }
+
     private void SetBusy(bool busy, string message)
     {
+        _busy = busy;
+        PlatformBox.IsEnabled = !busy;
+        ResultsList.IsEnabled = !busy;
         SearchButton.IsEnabled = !busy;
         SaveButton.IsEnabled = !busy && ResultsList.SelectedItem is not null;
         FeedbackText.Text = message;

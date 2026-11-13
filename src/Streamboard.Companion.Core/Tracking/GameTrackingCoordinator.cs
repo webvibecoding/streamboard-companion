@@ -201,6 +201,8 @@ public sealed class GameTrackingCoordinator
 
     private static string SafeErrorMessage(Exception exception) => exception switch
     {
+        CompanionApiException { Reason: "desktop_pairing_required" } =>
+            "подключите Streamboard через меню приложения",
         CompanionApiException apiException => apiException.Reason,
         _ => exception.GetType().Name,
     };

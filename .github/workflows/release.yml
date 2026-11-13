@@ -3,17 +3,17 @@ name: Release
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   release:
     runs-on: windows-latest
     timeout-minutes: 30
-    env:
-      WINDOWS_SIGNING_PFX_BASE64: ${{ secrets.WINDOWS_SIGNING_PFX_BASE64 }}
-      WINDOWS_SIGNING_PFX_PASSWORD: ${{ secrets.WINDOWS_SIGNING_PFX_PASSWORD }}
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -26,9 +26,11 @@ jobs:
       - name: Resolve version
         id: version
         shell: pwsh
+        env:
+          REF_NAME: ${{ github.ref_name }}
         run: |
-          $version = "${{ github.ref_name }}" -replace '^v', ''
-          if ($version -notmatch '^\d+\.\d+\.\d+([.-][0-9A-Za-z.-]+)?$') { throw "Invalid version tag" }
+          $version = if ($env:GITHUB_REF_TYPE -eq 'tag') { $env:REF_NAME -replace '^v', '' } else { '1.0.0' }
+          if ($version -notmatch '^\d+\.\d+\.\d+$') { throw "Invalid version tag" }
           "version=$version" >> $env:GITHUB_OUTPUT
       - run: dotnet restore Streamboard.Companion.sln
       - run: dotnet build Streamboard.Companion.sln --configuration Release --no-restore -p:Version=${{ steps.version.outputs.version }}
@@ -41,11 +43,11 @@ jobs:
           -p:DebugType=None -p:Version=${{ steps.version.outputs.version }}
           --output artifacts/publish
       - name: Sign application when configured
-        if: ${{ env.WINDOWS_SIGNING_PFX_BASE64 != '' }}
+        if: vars.WINDOWS_SIGNING_ENABLED == 'true' && github.ref_type == 'tag'
         shell: pwsh
         env:
-          SIGNING_PFX: ${{ env.WINDOWS_SIGNING_PFX_BASE64 }}
-          SIGNING_PASSWORD: ${{ env.WINDOWS_SIGNING_PFX_PASSWORD }}
+          SIGNING_PFX: ${{ secrets.WINDOWS_SIGNING_PFX_BASE64 }}
+          SIGNING_PASSWORD: ${{ secrets.WINDOWS_SIGNING_PFX_PASSWORD }}
         run: |
           $pfx = Join-Path $env:RUNNER_TEMP signing.pfx
           [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:SIGNING_PFX))
@@ -63,11 +65,11 @@ jobs:
           if (-not (Test-Path -LiteralPath $iscc)) { throw "Inno Setup 6 is unavailable" }
           & $iscc "/DAppVersion=${{ steps.version.outputs.version }}" installer/Streamboard.Companion.iss
       - name: Sign installer when configured
-        if: ${{ env.WINDOWS_SIGNING_PFX_BASE64 != '' }}
+        if: vars.WINDOWS_SIGNING_ENABLED == 'true' && github.ref_type == 'tag'
         shell: pwsh
         env:
-          SIGNING_PFX: ${{ env.WINDOWS_SIGNING_PFX_BASE64 }}
-          SIGNING_PASSWORD: ${{ env.WINDOWS_SIGNING_PFX_PASSWORD }}
+          SIGNING_PFX: ${{ secrets.WINDOWS_SIGNING_PFX_BASE64 }}
+          SIGNING_PASSWORD: ${{ secrets.WINDOWS_SIGNING_PFX_PASSWORD }}
         run: |
           $pfx = Join-Path $env:RUNNER_TEMP signing.pfx
           [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:SIGNING_PFX))
@@ -89,14 +91,36 @@ jobs:
             "$hash  $($file.Name)"
           }
           Set-Content -LiteralPath artifacts/SHA256SUMS.txt -Value $lines -Encoding utf8NoBOM
+      - uses: actions/upload-artifact@v4
+        with:
+          name: streamboard-companion-${{ steps.version.outputs.version }}-win-x64
+          path: |
+            artifacts/*.zip
+            artifacts/*.exe
+            artifacts/*.spdx.json
+            artifacts/SHA256SUMS.txt
+          if-no-files-found: error
+
+  draft:
+    if: github.ref_type == 'tag'
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: streamboard-companion-${{ needs.release.outputs.version }}-win-x64
+          path: artifacts
       - uses: softprops/action-gh-release@v2
         with:
           draft: true
-          name: Streamboard Companion ${{ steps.version.outputs.version }}
+          name: Streamboard Companion ${{ needs.release.outputs.version }}
           body_path: RELEASE_NOTES.md
           files: |
-            artifacts/Streamboard.Companion-${{ steps.version.outputs.version }}-win-x64-portable.zip
-            artifacts/Streamboard.Companion-Setup-${{ steps.version.outputs.version }}.exe
-            artifacts/Streamboard.Companion-${{ steps.version.outputs.version }}-sbom.spdx.json
+            artifacts/*.zip
+            artifacts/*.exe
+            artifacts/*.spdx.json
             artifacts/SHA256SUMS.txt
           fail_on_unmatched_files: true

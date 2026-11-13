@@ -11,6 +11,8 @@ public partial class StatusWindow : Window
     private readonly TrackingController _tracking;
     private readonly Action _openMapping;
     private bool _allowClose;
+    private string? _resultsGameKey;
+    private IReadOnlyList<PlatformSyncResult> _results = [];
 
     public StatusWindow(TrackingController tracking, Action openMapping)
     {
@@ -31,12 +33,17 @@ public partial class StatusWindow : Window
 
         if (status.Results is not null)
         {
+            _resultsGameKey = status.Game?.Key;
+            _results = status.Results;
             TwitchStatusText.Text = FormatResult(status.Results.FirstOrDefault(
                 static result => result.PlatformId == "twitch"));
             VkStatusText.Text = FormatResult(status.Results.FirstOrDefault(
                 static result => result.PlatformId == "vkplaylive"));
         }
     }
+
+    internal IReadOnlyList<PlatformSyncResult> GetResultsFor(string gameKey) =>
+        gameKey == _resultsGameKey ? _results : [];
 
     public void ShowFromTray()
     {
