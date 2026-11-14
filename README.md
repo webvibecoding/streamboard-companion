@@ -2,7 +2,7 @@
 
 Streamboard Companion is a Windows 11 tray application that detects the game in
 the foreground and keeps the category of active Twitch and VK Play Live streams
-in sync through [Streamboard](https://streamboard.sip1ay.ru).
+in sync through [Streamboard](https://streamboard.sip1ay.pro).
 
 ## Version 1.0 scope
 
@@ -58,7 +58,7 @@ dotnet build Streamboard.Companion.sln -c Release
 dotnet test Streamboard.Companion.sln -c Release
 ```
 
-Release builds always connect to `https://streamboard.sip1ay.ru`. Tests inject a
+Release builds always connect to `https://streamboard.sip1ay.pro`. Tests inject a
 mock HTTP transport and never require production credentials.
 
 ## Security

@@ -9,8 +9,6 @@ namespace Streamboard.Companion.Windows;
 
 internal sealed class TrayController : IDisposable
 {
-    private static readonly Uri DashboardUri = new("https://streamboard.sip1ay.ru/");
-
     private readonly NotifyIcon _notifyIcon;
     private readonly ToolStripMenuItem _statusItem;
     private readonly ToolStripMenuItem _pauseItem;
@@ -53,7 +51,7 @@ internal sealed class TrayController : IDisposable
         var connectItem = new ToolStripMenuItem("Подключить Streamboard");
         connectItem.Click += async (_, _) => await ConnectAsync().ConfigureAwait(true);
         var dashboardItem = new ToolStripMenuItem("Открыть Streamboard");
-        dashboardItem.Click += (_, _) => OpenUri(DashboardUri);
+        dashboardItem.Click += (_, _) => OpenUri(App.ProductionBaseUri);
         var updateItem = new ToolStripMenuItem("Проверить обновления");
         updateItem.Click += async (_, _) => await CheckUpdatesAsync().ConfigureAwait(true);
         var signOutItem = new ToolStripMenuItem("Отключить устройство");

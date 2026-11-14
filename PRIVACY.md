@@ -4,7 +4,7 @@ Streamboard Companion monitors only the foreground Windows process while the
 application is running. It uses local Steam/Epic manifests and executable
 metadata to determine a display name.
 
-The Companion may send the following to `https://streamboard.sip1ay.ru`:
+The Companion may send the following to `https://streamboard.sip1ay.pro`:
 
 - a Steam or Epic identifier, or a SHA-256 identifier derived locally for an executable;
 - the detected game display name and executable file name;

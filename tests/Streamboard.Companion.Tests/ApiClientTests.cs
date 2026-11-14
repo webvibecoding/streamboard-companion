@@ -24,7 +24,7 @@ public sealed class ApiClientTests
     public async Task ClientUsesDesktopV1ContractAndBearerAuth()
     {
         var handler = new RecordingHandler();
-        using var http = new HttpClient(handler) { BaseAddress = new Uri("https://streamboard.sip1ay.ru/") };
+        using var http = new HttpClient(handler) { BaseAddress = new Uri("https://streamboard.sip1ay.pro/") };
         var client = new StreamboardApiClient(http);
 
         await client.StartPairingAsync(new PairingRequest("Gaming PC", new string('A', 43)));
@@ -47,7 +47,7 @@ public sealed class ApiClientTests
     public async Task ManualMappingSendsOnlyWritableFields()
     {
         var handler = new RecordingHandler();
-        using var http = new HttpClient(handler) { BaseAddress = new Uri("https://streamboard.sip1ay.ru/") };
+        using var http = new HttpClient(handler) { BaseAddress = new Uri("https://streamboard.sip1ay.pro/") };
         var client = new StreamboardApiClient(http);
         var mapping = new DesktopMapping(
             new SyncGame("steam:730", "steam", "Counter-Strike 2", "cs2.exe"),
@@ -69,7 +69,7 @@ public sealed class ApiClientTests
     {
         using var http = new HttpClient(new SecretErrorHandler())
         {
-            BaseAddress = new Uri("https://streamboard.sip1ay.ru/"),
+            BaseAddress = new Uri("https://streamboard.sip1ay.pro/"),
         };
         var client = new StreamboardApiClient(http);
 
@@ -107,8 +107,8 @@ public sealed class ApiClientTests
                 {
                     device_code = "device-code-value-123456",
                     user_code = "ABCD-EFGH",
-                    verification_uri = "https://streamboard.sip1ay.ru/next/",
-                    verification_uri_complete = "https://streamboard.sip1ay.ru/next/?desktop_pairing=ABCD-EFGH",
+                    verification_uri = "https://streamboard.sip1ay.pro/next/",
+                    verification_uri_complete = "https://streamboard.sip1ay.pro/next/?desktop_pairing=ABCD-EFGH",
                     expires_in = 600,
                     interval = 5,
                 }

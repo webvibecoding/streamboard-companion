@@ -11,7 +11,7 @@ namespace Streamboard.Companion.Windows;
 
 public partial class App : System.Windows.Application
 {
-    private static readonly Uri ProductionBaseUri = new("https://streamboard.sip1ay.ru/");
+    internal static readonly Uri ProductionBaseUri = new("https://streamboard.sip1ay.pro/");
 
     private readonly CancellationTokenSource _shutdown = new();
     private SingleInstanceGuard? _singleInstance;
