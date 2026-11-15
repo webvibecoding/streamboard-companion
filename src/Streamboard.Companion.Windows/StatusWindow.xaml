@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Streamboard Companion" Height="430" Width="620"
         MinHeight="390" MinWidth="540" WindowStartupLocation="CenterScreen"
-        ShowInTaskbar="False">
+        Icon="Assets/Streamboard.ico" ShowInTaskbar="False">
   <Grid Margin="24">
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto" />
@@ -44,10 +44,11 @@
       </Border>
     </Grid>
 
-    <StackPanel Grid.Row="3" Margin="0,20,0,0" Orientation="Horizontal" HorizontalAlignment="Right">
-      <Button x:Name="MappingButton" Padding="14,8" Margin="0,0,8,0" Content="Выбрать категорию…" IsEnabled="False" Click="MappingButton_Click" />
-      <Button x:Name="PauseButton" Padding="14,8" Margin="0,0,8,0" Content="Приостановить" Click="PauseButton_Click" />
+    <WrapPanel Grid.Row="3" Margin="0,20,0,0" HorizontalAlignment="Right">
+      <Button Padding="12,8" Margin="0,0,8,4" Content="Сохранённые сопоставления" Click="SavedMappingsButton_Click" />
+      <Button x:Name="MappingButton" Padding="12,8" Margin="0,0,8,4" Content="Выбрать категорию…" IsEnabled="False" Click="MappingButton_Click" />
+      <Button x:Name="PauseButton" Padding="12,8" Margin="0,0,8,4" Content="Приостановить" Click="PauseButton_Click" />
       <Button Padding="14,8" Content="Скрыть" Click="HideButton_Click" />
-    </StackPanel>
+    </WrapPanel>
   </Grid>
 </Window>

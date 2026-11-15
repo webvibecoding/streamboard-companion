@@ -1,17 +1,15 @@
-# Streamboard Companion 1.0.0
+# Streamboard Companion 1.1.0
 
-Initial Windows 11 release.
+This Windows 11 release adds a branded icon and a table for saved game categories.
 
 ## Highlights
 
-- Foreground game detection for Steam, Epic Games, and executable metadata.
-- Automatic category synchronization for active Twitch and VK Play Live streams.
-- Secure browser pairing with rotating device credentials.
-- Tray status, pause/resume, and manual category mapping for ambiguous games.
-- Portable x64 package and per-user installer.
+- Open **Saved mappings** from the tray or status window to view and edit
+  Twitch and VK Play Live categories, even when the game is closed.
+- The tray, app windows, EXE, and installer use the new SB icon.
+- The desktop shortcut is selected by default on fresh installations.
 
 ## Important
 
-This release does not change stream titles or tags. Kick, Trovo, and YouTube are
-not modified in version 1.0.0. The binaries are not code-signed, so Windows
-SmartScreen may show an unknown-publisher warning; verify `SHA256SUMS.txt`.
+The binaries are not code-signed. Windows SmartScreen may show an unknown-publisher warning.
+Verify the files against `SHA256SUMS.txt`.

@@ -1,6 +1,5 @@
 using System.Net.Http.Json;
 using System.Net.Http;
-using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -39,7 +38,7 @@ internal sealed class ReleaseUpdateChecker
         try
         {
             using var request = new HttpRequestMessage(HttpMethod.Get, LatestReleaseUri);
-            request.Headers.UserAgent.ParseAdd("Streamboard.Companion/1.0.0");
+            request.Headers.UserAgent.ParseAdd($"Streamboard.Companion/{App.AppVersion.ToString(3)}");
             using var response = await _httpClient.SendAsync(
                 request,
                 HttpCompletionOption.ResponseHeadersRead,
@@ -48,7 +47,7 @@ internal sealed class ReleaseUpdateChecker
             var release = await response.Content.ReadFromJsonAsync<GitHubRelease>(
                 cancellationToken: cancellationToken).ConfigureAwait(false);
             var releaseVersion = ParseVersion(release?.TagName);
-            var currentVersion = Assembly.GetExecutingAssembly().GetName().Version ?? new Version(1, 0, 0);
+            var currentVersion = App.AppVersion;
             var releaseUri = Uri.TryCreate(release?.HtmlUrl, UriKind.Absolute, out var uri)
                 && uri.Scheme == Uri.UriSchemeHttps
                     ? uri

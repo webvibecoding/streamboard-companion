@@ -10,6 +10,7 @@ namespace Streamboard.Companion.Windows;
 internal sealed class TrayController : IDisposable
 {
     private readonly NotifyIcon _notifyIcon;
+    private readonly Icon _icon;
     private readonly ToolStripMenuItem _statusItem;
     private readonly ToolStripMenuItem _pauseItem;
     private readonly ToolStripMenuItem _mappingItem;
@@ -30,6 +31,7 @@ internal sealed class TrayController : IDisposable
         Func<Task> checkUpdates,
         Action openStatus,
         Action openMapping,
+        Action openSavedMappings,
         Action exit)
     {
         _trackingControl = trackingControl;
@@ -48,6 +50,8 @@ internal sealed class TrayController : IDisposable
 
         var detailsItem = new ToolStripMenuItem("Открыть состояние");
         detailsItem.Click += (_, _) => _openStatus();
+        var savedMappingsItem = new ToolStripMenuItem("Сохранённые сопоставления…");
+        savedMappingsItem.Click += (_, _) => openSavedMappings();
         var connectItem = new ToolStripMenuItem("Подключить Streamboard");
         connectItem.Click += async (_, _) => await ConnectAsync().ConfigureAwait(true);
         var dashboardItem = new ToolStripMenuItem("Открыть Streamboard");
@@ -68,6 +72,7 @@ internal sealed class TrayController : IDisposable
             connectItem,
             _pauseItem,
             _mappingItem,
+            savedMappingsItem,
             new ToolStripSeparator(),
             dashboardItem,
             updateItem,
@@ -75,9 +80,13 @@ internal sealed class TrayController : IDisposable
             exitItem,
         ]);
 
+        var iconUri = new Uri("pack://application:,,,/Assets/Streamboard.ico", UriKind.Absolute);
+        using var iconStream = System.Windows.Application.GetResourceStream(iconUri).Stream;
+        using var resourceIcon = new Icon(iconStream, SystemInformation.SmallIconSize);
+        _icon = (Icon)resourceIcon.Clone();
         _notifyIcon = new NotifyIcon
         {
-            Icon = SystemIcons.Application,
+            Icon = _icon,
             Text = "Streamboard Companion",
             ContextMenuStrip = menu,
             Visible = true,
@@ -181,6 +190,7 @@ internal sealed class TrayController : IDisposable
         _disposed = true;
         _notifyIcon.Visible = false;
         _notifyIcon.Dispose();
+        _icon.Dispose();
     }
 
     private void PauseChanged(object? sender, EventArgs eventArgs)

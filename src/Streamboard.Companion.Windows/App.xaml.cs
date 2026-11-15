@@ -12,6 +12,7 @@ namespace Streamboard.Companion.Windows;
 public partial class App : System.Windows.Application
 {
     internal static readonly Uri ProductionBaseUri = new("https://streamboard.sip1ay.pro/");
+    internal static readonly Version AppVersion = typeof(App).Assembly.GetName().Version!;
 
     private readonly CancellationTokenSource _shutdown = new();
     private SingleInstanceGuard? _singleInstance;
@@ -19,9 +20,11 @@ public partial class App : System.Windows.Application
     private HttpClient? _updateHttpClient;
     private DeviceTokenManager? _tokens;
     private IStreamboardApiClient? _api;
+    private CategoryMappings? _categoryMappings;
     private IExecutableMappingStore? _executableMappings;
     private TrackingController? _trackingControl;
     private StatusWindow? _statusWindow;
+    private SavedMappingsWindow? _savedMappingsWindow;
     private TrayController? _tray;
     private ReleaseUpdateChecker? _updates;
     private LocalLog? _log;
@@ -58,7 +61,7 @@ public partial class App : System.Windows.Application
         _trackingControl = new TrackingController();
         _executableMappings = new JsonExecutableMappingStore(
             Path.Combine(dataDirectory, "executable-mappings.json"));
-        _statusWindow = new StatusWindow(_trackingControl, OpenMappingWindow);
+        _statusWindow = new StatusWindow(_trackingControl, OpenMappingWindow, OpenSavedMappingsWindow);
 
         _apiHttpClient = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false })
         {
@@ -66,7 +69,7 @@ public partial class App : System.Windows.Application
             Timeout = TimeSpan.FromSeconds(20),
         };
         _apiHttpClient.DefaultRequestHeaders.UserAgent.Add(
-            new ProductInfoHeaderValue("Streamboard.Companion", "1.0.0"));
+            new ProductInfoHeaderValue("Streamboard.Companion", AppVersion.ToString(3)));
         _api = new StreamboardApiClient(_apiHttpClient);
 
         _updateHttpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
@@ -81,6 +84,7 @@ public partial class App : System.Windows.Application
             () => CheckUpdatesAsync(force: true),
             () => _statusWindow.ShowFromTray(),
             OpenMappingWindow,
+            OpenSavedMappingsWindow,
             ExitApplication);
 
         var pairingInteraction = new BrowserPairingInteraction(Dispatcher, _tray);
@@ -89,6 +93,7 @@ public partial class App : System.Windows.Application
             new WindowsCredentialStore(),
             pairingInteraction,
             Environment.MachineName);
+        _categoryMappings = new CategoryMappings(_api, _tokens);
 
         var resolver = new GameResolver(
             InstalledGameCatalogFactory.Create(),
@@ -145,6 +150,7 @@ public partial class App : System.Windows.Application
     {
         if (_tokens is not null)
         {
+            _savedMappingsWindow?.Close();
             await _tokens.SignOutAsync(_shutdown.Token).ConfigureAwait(true);
         }
     }
@@ -192,7 +198,7 @@ public partial class App : System.Windows.Application
 
     private void OpenMappingWindow()
     {
-        if (_api is null || _tokens is null || _executableMappings is null || _statusWindow is null)
+        if (_categoryMappings is null || _executableMappings is null || _statusWindow is null)
         {
             return;
         }
@@ -205,7 +211,8 @@ public partial class App : System.Windows.Application
         }
 
         var window = new CategoryMappingWindow(
-            game, _api, _tokens, _executableMappings, _statusWindow.GetResultsFor(game.Key))
+            new SyncGame(game.Key, game.Source, game.DisplayName, game.ExecutableName),
+            _categoryMappings, _executableMappings, _statusWindow.GetResultsFor(game.Key))
         {
             Owner = _statusWindow.IsVisible ? _statusWindow : null,
         };
@@ -214,6 +221,28 @@ public partial class App : System.Windows.Application
             _tray?.ShowInformation("Сопоставление сохранено. Категория проверится повторно.");
             _trackingControl?.NotifySystemResume();
         }
+    }
+
+    private void OpenSavedMappingsWindow()
+    {
+        if (_categoryMappings is null)
+        {
+            return;
+        }
+
+        if (_savedMappingsWindow is null)
+        {
+            _savedMappingsWindow = new SavedMappingsWindow(_categoryMappings);
+            _savedMappingsWindow.Closed += (_, _) => _savedMappingsWindow = null;
+            _savedMappingsWindow.Show();
+        }
+
+        if (_savedMappingsWindow.WindowState == WindowState.Minimized)
+        {
+            _savedMappingsWindow.WindowState = WindowState.Normal;
+        }
+
+        _savedMappingsWindow.Activate();
     }
 
     private void PowerModeChanged(object sender, PowerModeChangedEventArgs e)

@@ -1,37 +1,46 @@
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using Streamboard.Companion.Core.Api;
-using Streamboard.Companion.Core.Auth;
 using Streamboard.Companion.Core.Detection;
 
 namespace Streamboard.Companion.Windows;
 
 public partial class CategoryMappingWindow : Window
 {
-    private readonly ResolvedGame _game;
-    private readonly IStreamboardApiClient _api;
-    private readonly DeviceTokenManager _tokens;
-    private readonly IExecutableMappingStore _executableMappings;
+    private readonly SyncGame _game;
+    private readonly CategoryMappings _mappings;
+    private readonly IExecutableMappingStore? _executableMappings;
     private readonly IReadOnlyList<PlatformSyncResult> _results;
+    private readonly string? _fixedPlatform;
+    private readonly CancellationTokenSource _lifetime = new();
     private bool _busy;
+    private bool _saving;
 
-    public CategoryMappingWindow(
-        ResolvedGame game,
-        IStreamboardApiClient api,
-        DeviceTokenManager tokens,
-        IExecutableMappingStore executableMappings,
-        IReadOnlyList<PlatformSyncResult> results)
+    internal CategoryMappingWindow(
+        SyncGame game,
+        CategoryMappings mappings,
+        IExecutableMappingStore? executableMappings = null,
+        IReadOnlyList<PlatformSyncResult>? results = null,
+        string? fixedPlatform = null,
+        CategorySearchItem? currentCategory = null)
     {
         InitializeComponent();
         _game = game;
-        _api = api;
-        _tokens = tokens;
+        _mappings = mappings;
         _executableMappings = executableMappings;
-        _results = results;
+        _results = results ?? [];
+        _fixedPlatform = fixedPlatform;
         GameNameBox.Text = game.DisplayName;
-        QueryBox.Text = game.DisplayName;
-        if (results.Any(result => result.PlatformId == "vkplaylive" && result.Status == "needs_mapping")
-            && !results.Any(result => result.PlatformId == "twitch" && result.Status == "needs_mapping"))
+        GameNameBox.IsReadOnly = fixedPlatform is not null;
+        QueryBox.Text = currentCategory?.Name ?? game.DisplayName;
+        if (fixedPlatform is not null)
+        {
+            PlatformBox.SelectedIndex = fixedPlatform == CategoryMappings.VkPlayLive ? 1 : 0;
+            PlatformBox.IsEnabled = false;
+        }
+        else if (_results.Any(result => result.PlatformId == CategoryMappings.VkPlayLive && result.Status == "needs_mapping")
+            && !_results.Any(result => result.PlatformId == CategoryMappings.Twitch && result.Status == "needs_mapping"))
         {
             PlatformBox.SelectedIndex = 1;
         }
@@ -40,7 +49,13 @@ public partial class CategoryMappingWindow : Window
             SaveButton.IsEnabled = !_busy && ResultsList.SelectedItem is not null;
         PlatformBox.SelectionChanged += (_, _) => ShowCandidates();
         ShowCandidates();
+        if (currentCategory is not null)
+        {
+            FeedbackText.Text = $"Текущая категория: {currentCategory.Name}";
+        }
     }
+
+    internal DesktopMapping? SavedMapping { get; private set; }
 
     private async void SearchButton_Click(object sender, RoutedEventArgs e)
     {
@@ -51,25 +66,34 @@ public partial class CategoryMappingWindow : Window
             return;
         }
 
+        var cancellationToken = _lifetime.Token;
         SetBusy(true, "Ищем категории…");
         try
         {
-            var token = await _tokens.GetAccessTokenAsync();
-            var result = await _api.SearchCategoriesAsync(token, SelectedPlatform(), query);
+            var result = await _mappings.SearchAsync(SelectedPlatform(), query, cancellationToken);
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+
             ResultsList.ItemsSource = result.Items;
             FeedbackText.Text = result.Items.Count == 0
                 ? "Категории не найдены."
                 : $"Найдено: {result.Items.Count}";
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
         catch (Exception exception)
         {
-            FeedbackText.Text = exception is CompanionApiException apiException
-                ? $"Ошибка: {apiException.Reason}"
-                : "Не удалось выполнить поиск.";
+            FeedbackText.Text = CategoryMappingErrors.Message(exception, "Не удалось выполнить поиск.");
         }
         finally
         {
-            SetBusy(false, FeedbackText.Text);
+            if (!cancellationToken.IsCancellationRequested)
+            {
+                SetBusy(false, FeedbackText.Text);
+            }
         }
     }
 
@@ -87,38 +111,41 @@ public partial class CategoryMappingWindow : Window
             return;
         }
 
+        var cancellationToken = _lifetime.Token;
+        _saving = true;
         SetBusy(true, "Сохраняем…");
         try
         {
-            var token = await _tokens.GetAccessTokenAsync();
-            await _api.PutMappingAsync(
-                token,
-                new DesktopMapping(
-                    new SyncGame(
-                        _game.Key,
-                        _game.Source,
-                        displayName,
-                        Path.GetFileName(_game.ExecutableName)),
-                    SelectedPlatform(),
-                    category with { Type = category.Type ?? "game" }));
-            if (_game.Source == "exe")
+            SavedMapping = await _mappings.SaveAsync(
+                _game with { DisplayName = displayName, ExecutableName = Path.GetFileName(_game.ExecutableName) },
+                SelectedPlatform(), category, cancellationToken);
+            if (_game.Source == "exe" && _executableMappings is not null)
             {
-                await _executableMappings.SetAsync(new ExecutableGameMapping(_game.Key, displayName));
+                await _executableMappings.SetAsync(
+                    new ExecutableGameMapping(_game.Key, displayName), cancellationToken);
             }
 
-            DialogResult = true;
+            _saving = false;
+            if (!cancellationToken.IsCancellationRequested)
+            {
+                DialogResult = true;
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
         }
         catch (Exception exception)
         {
-            FeedbackText.Text = exception is CompanionApiException apiException
-                ? $"Ошибка: {apiException.Reason}"
-                : "Не удалось сохранить сопоставление.";
-            SetBusy(false, FeedbackText.Text);
+            _saving = false;
+            if (!cancellationToken.IsCancellationRequested)
+            {
+                SetBusy(false, CategoryMappingErrors.Message(exception, "Не удалось сохранить сопоставление."));
+            }
         }
     }
 
     private string SelectedPlatform() =>
-        (PlatformBox.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "twitch";
+        _fixedPlatform ?? (PlatformBox.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? CategoryMappings.Twitch;
 
     private void ShowCandidates()
     {
@@ -131,12 +158,26 @@ public partial class CategoryMappingWindow : Window
     private void SetBusy(bool busy, string message)
     {
         _busy = busy;
-        PlatformBox.IsEnabled = !busy;
+        PlatformBox.IsEnabled = !busy && _fixedPlatform is null;
         ResultsList.IsEnabled = !busy;
         SearchButton.IsEnabled = !busy;
         SaveButton.IsEnabled = !busy && ResultsList.SelectedItem is not null;
+        CancelButton.IsEnabled = !_saving;
         FeedbackText.Text = message;
     }
 
     private void CancelButton_Click(object sender, RoutedEventArgs e) => Close();
+
+    protected override void OnClosing(CancelEventArgs e)
+    {
+        e.Cancel = _saving;
+        base.OnClosing(e);
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        _lifetime.Cancel();
+        _lifetime.Dispose();
+        base.OnClosed(e);
+    }
 }

@@ -8,9 +8,11 @@
     <AssemblyName>Streamboard.Companion</AssemblyName>
     <RootNamespace>Streamboard.Companion.Windows</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets/Streamboard.ico</ApplicationIcon>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
   </PropertyGroup>
   <ItemGroup>
+    <Resource Include="Assets/Streamboard.ico" />
     <ProjectReference Include="..\Streamboard.Companion.Core\Streamboard.Companion.Core.csproj" />
   </ItemGroup>
 </Project>

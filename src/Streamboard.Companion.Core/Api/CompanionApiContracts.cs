@@ -51,7 +51,7 @@ public sealed record SyncGame(
     [property: JsonPropertyName("key")] string Key,
     [property: JsonPropertyName("source")] string Source,
     [property: JsonPropertyName("display_name")] string DisplayName,
-    [property: JsonPropertyName("executable_name")] string ExecutableName);
+    [property: JsonPropertyName("executable_name")] string? ExecutableName);
 
 public sealed record SyncRequest(
     [property: JsonPropertyName("event_id")] string EventId,

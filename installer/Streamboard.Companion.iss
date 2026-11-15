@@ -1,5 +1,5 @@
 #ifndef AppVersion
-  #define AppVersion "1.0.0"
+  #define AppVersion "1.1.0"
 #endif
 
 #define AppName "Streamboard Companion"
@@ -24,7 +24,9 @@ OutputBaseFilename=Streamboard.Companion-Setup-{#AppVersion}
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
+SetupIconFile=..\src\Streamboard.Companion.Windows\Assets\Streamboard.ico
 UninstallDisplayIcon={app}\{#AppExeName}
+UsePreviousTasks=yes
 CloseApplications=yes
 RestartApplications=no
 VersionInfoVersion={#AppVersion}
@@ -37,7 +39,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "russian"; MessagesFile: "compiler:Languages\Russian.isl"
 
 [Tasks]
-Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Additional shortcuts:"; Flags: unchecked
+Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
 
 [Files]
 Source: "..\artifacts\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs

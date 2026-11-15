@@ -21,9 +21,9 @@ Download one of the assets from the latest GitHub Release:
 - `Streamboard.Companion-<version>-win-x64-portable.zip` — extract and run
   `Streamboard.Companion.exe`.
 - `Streamboard.Companion-Setup-<version>.exe` — per-user installer with Start Menu
-  and optional desktop shortcuts.
+  and a desktop shortcut selected by default.
 
-The 1.0 release is not code-signed. Windows SmartScreen may display an
+The release binaries are not code-signed. Windows SmartScreen may display an
 "Unknown publisher" warning. Verify the downloaded file against `SHA256SUMS.txt`
 before running it.
 
@@ -37,6 +37,13 @@ before running it.
 
 The refresh credential is stored in Windows Credential Manager. You can revoke
 the device from Streamboard or disconnect it from the tray application.
+
+## Saved mappings
+
+Open **Сохранённые сопоставления** from the tray or status window. Select the
+Twitch or VK Play Live cell to change a category or fill in a missing one. The
+game can be closed while you edit. Companion uses the saved category on the
+next sync for an active game and a live stream.
 
 ## Privacy
 

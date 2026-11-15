@@ -221,17 +221,14 @@ public sealed class StreamboardApiClient : IStreamboardApiClient
             using var document = await JsonDocument.ParseAsync(
                 await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false),
                 cancellationToken: cancellationToken).ConfigureAwait(false);
-            if (document.RootElement.TryGetProperty("detail", out var detail)
-                && detail.ValueKind == JsonValueKind.String
-                && !string.IsNullOrWhiteSpace(detail.GetString()))
+            if (document.RootElement.ValueKind == JsonValueKind.Object
+                && document.RootElement.TryGetProperty("detail", out var detail)
+                && detail.ValueKind == JsonValueKind.Object
+                && detail.TryGetProperty("code", out var code)
+                && code.ValueKind == JsonValueKind.String
+                && IsErrorCode(code.GetString()))
             {
-                reason = detail.GetString()!;
-            }
-            else if (document.RootElement.TryGetProperty("error", out var error)
-                && error.ValueKind == JsonValueKind.String
-                && !string.IsNullOrWhiteSpace(error.GetString()))
-            {
-                reason = error.GetString()!;
+                reason = code.GetString()!;
             }
         }
         catch (JsonException)
@@ -241,5 +238,12 @@ public sealed class StreamboardApiClient : IStreamboardApiClient
 
         return new CompanionApiException(response.StatusCode, reason);
     }
+
+    private static bool IsErrorCode(string? code) =>
+        code is { Length: > 0 and <= 80 }
+        && (code.StartsWith("desktop_", StringComparison.Ordinal)
+            || code.StartsWith("twitch_", StringComparison.Ordinal)
+            || code.StartsWith("vkplaylive_", StringComparison.Ordinal))
+        && code.All(static ch => char.IsAsciiLetterOrDigit(ch) || ch == '_');
 }
 

@@ -10,15 +10,17 @@ public partial class StatusWindow : Window
 {
     private readonly TrackingController _tracking;
     private readonly Action _openMapping;
+    private readonly Action _openSavedMappings;
     private bool _allowClose;
     private string? _resultsGameKey;
     private IReadOnlyList<PlatformSyncResult> _results = [];
 
-    public StatusWindow(TrackingController tracking, Action openMapping)
+    public StatusWindow(TrackingController tracking, Action openMapping, Action openSavedMappings)
     {
         InitializeComponent();
         _tracking = tracking;
         _openMapping = openMapping;
+        _openSavedMappings = openSavedMappings;
     }
 
     public ResolvedGame? CurrentGame { get; private set; }
@@ -81,6 +83,8 @@ public partial class StatusWindow : Window
 
     private void MappingButton_Click(object sender, RoutedEventArgs e) => _openMapping();
 
+    private void SavedMappingsButton_Click(object sender, RoutedEventArgs e) => _openSavedMappings();
+
     private void HideButton_Click(object sender, RoutedEventArgs e) => Hide();
 
     private static string FormatResult(PlatformSyncResult? result) => result?.Status switch
@@ -91,7 +95,7 @@ public partial class StatusWindow : Window
         "not_connected" => "Платформа не подключена",
         "needs_mapping" => "Нужно выбрать категорию",
         "error" => $"Ошибка: {result.Error ?? "неизвестная"}",
-        "unsupported" => "Не поддерживается в версии 1.0.0",
+        "unsupported" => "Не поддерживается в этой версии",
         _ => "Ожидание проверки",
     };
 }
